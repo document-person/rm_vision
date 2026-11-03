@@ -9,12 +9,14 @@ project(rm_vision)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
+  ft_detection
   image_transport
   roscpp
   rospy
   sensor_msgs
   std_msgs
 )
+find_package(OpenCV REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -108,8 +110,9 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES rm_vision
-#  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs std_msgs
+  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
+  DEPENDS OpenCV
 )
 
 ###########
@@ -137,6 +140,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/rm_vision_node.cpp)
+ add_executable(image_sub src/image_sub.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -152,6 +156,9 @@ include_directories(
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+ target_link_libraries(image_sub
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
+ )
 
 #############
 ## Install ##
