@@ -1,0 +1,7 @@
+<launch>
+    <!--开启模拟时间-->
+    <param name="/use_sim_time" value="true" />
+    
+    <node name="image_sub" pkg="rm_vision" type="image_sub" output="screen" />
+
+</launch>
