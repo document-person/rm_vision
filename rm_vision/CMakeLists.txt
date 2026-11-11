@@ -15,6 +15,10 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   sensor_msgs
   std_msgs
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
+  geometry_msgs
 )
 find_package(OpenCV REQUIRED)
 
@@ -142,7 +146,8 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/rm_vision_node.cpp)
  add_executable(image_sub
   src/image_sub.cpp
-  src/armor_detectors.cpp)
+  src/armor_detectors.cpp
+  src/armor_solver.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

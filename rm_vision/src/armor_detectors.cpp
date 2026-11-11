@@ -30,7 +30,7 @@ cv::Mat ArmorDetector::getColorMask(const cv::Mat& hsv,bool is_blue)
 std::vector<LightBar> ArmorDetector::findLightBars(const cv::Mat& mask,const cv::Mat& hsv)
 {
     std::vector<std::vector<cv::Point>> contours;//用二维数组去储存所有轮廓的坐标点
-    // 找轮廓：RETR_EXTERNAL只找最外层轮廓，CHAIN_APPROX_SIMPLE只存拐点坐标（省内存）
+    // 找轮廓：RETR_EXTERNAL只找最外层轮廓，CHAIN_APPROX_SIMPLE只存拐点坐标
     cv::findContours(mask,contours,cv::RETR_EXTERNAL,cv::CHAIN_APPROX_SIMPLE);
 
     std::vector<LightBar> bars;
@@ -58,7 +58,7 @@ std::vector<LightBar> ArmorDetector::findLightBars(const cv::Mat& mask,const cv:
         //统计这根灯条的平均亮度(V)，用于筛选掉地面反光的灯条
         cv::Rect br = rect.boundingRect() & cv::Rect(0,0,mask.cols,mask.rows);
         double mean_v = 0.0;
-        if (br.area() > 0) {
+        if (br.area() > 0) {//判断灯条必须在图像里面
             mean_v = cv::mean(hsv(br), mask(br))[2];
         }
 
@@ -95,8 +95,12 @@ std::vector<Armor> ArmorDetector::matchArmors(
         if(used[i]) continue;
         for(size_t j=i+1;j<bars.size();++j){
             if(used[j]) continue;
-            const auto& left_bar = bars[i];
-            const auto& right_bar = bars[j];
+            // const auto& left_bar = bars[i];
+            // const auto& right_bar = bars[j];
+            const bool i_is_left = (bars[i].center.x <= bars[j].center.x);
+            const auto& left_bar = i_is_left ? bars[i] : bars[j];
+            const auto& right_bar = i_is_left ? bars[j] : bars[i];
+
             double y_diff = std::abs(left_bar.center.y - right_bar.center.y);
             double x_diff = std::abs(left_bar.center.x - right_bar.center.x);
             double max_len = std::max(left_bar.length, right_bar.length);
@@ -126,9 +130,9 @@ std::vector<Armor> ArmorDetector::matchArmors(
             //     left_bar.angle, right_bar.angle,
             //     y_diff , left_bar.mean_v, right_bar.mean_v);
 
-            if(ratio > 6.0 || ratio < 1.5) continue;
+            if(ratio > 6.0 || ratio < 1.0) continue;
             //判断大小装甲板
-            std::string bar_size = (ratio > 2.0) ? "Big" : "Small";
+            std::string bar_size = (ratio > 3.2) ? "Big" : "Small";
 
             int left_x = static_cast<int>(std::min(left_bar.center.x , right_bar.center.x));//左灯条x坐标
             int right_x = static_cast<int>(std::max(left_bar.center.x , right_bar.center.x));//右灯条
@@ -148,7 +152,14 @@ std::vector<Armor> ArmorDetector::matchArmors(
             cv::Point2f ex = (right_bar.center - left_bar.center) /
                              static_cast<float>(cv::norm(right_bar.center - left_bar.center));
             cv::Point2f ey(-ex.y, ex.x);//向下
-            float half_len = static_cast<float>(max_len * 0.5);
+
+            // 高度用两根灯条长度的【均值】，不用 max：
+            //   max 会被"其中一根粘上反光/白边、被量长了"带偏，
+            //   而四角点的高度一旦虚高，PnP 就会以为板子在偏航（yaw 凭空出现），
+            //   坐标轴整体歪掉、z 也会偏小。
+            const double mean_len = 0.5 * (left_bar.length + right_bar.length);
+
+            float half_len = static_cast<float>(mean_len * 0.5);
             armor.corners = {//左上 右上 右下 左下
                 left_bar.center  - ey * half_len - ex * static_cast<float>(left_bar.width  * 0.5),
                 right_bar.center - ey * half_len + ex * static_cast<float>(right_bar.width * 0.5),

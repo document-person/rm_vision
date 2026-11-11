@@ -5,3 +5,5 @@ install/
 *.zip
 *.log
 .vscode/
+*.gv
+*.pdf

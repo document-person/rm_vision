@@ -33,7 +33,7 @@ public:
 
 private:
     //颜色分割
-    cv::Mat getColorMask(const cv::Mat& hsv,bool is_blue);/
+    cv::Mat getColorMask(const cv::Mat& hsv,bool is_blue);
     //找灯条
     std::vector<LightBar> findLightBars(const cv::Mat& mask,const cv::Mat& hsv);
     //配对装甲板
