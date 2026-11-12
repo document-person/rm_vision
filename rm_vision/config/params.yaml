@@ -1,0 +1,38 @@
+#话题
+image_topic: "/hk_camera/image_raw"
+camera_info_topic: "/hk_camera/camera_info"
+tf_parent_frame: "camera_optical_frame"
+
+#颜色阈值(HSV)
+red_h_min1: 0
+red_h_max1: 20
+red_h_min2: 150
+red_h_max2: 180
+blue_h_min: 95
+blue_h_max: 135
+s_min: 90
+s_max: 255
+v_min: 120
+v_max: 255
+
+#灯条过滤
+min_area: 20.0
+min_bar_ratio: 1.5
+max_bar_ratio: 20.0
+max_bar_angle: 45.0
+
+#配对装甲板
+  #装甲板参数
+small_half_w: 0.0675
+big_half_w: 0.1175
+bar_half_len: 0.0275
+  
+  #配对条件
+max_y_diff: 0.25
+max_angle_diff: 6.0
+max_bar_length_diff: 0.20 #灯条长度一致性
+max_bar_width_diff: 0.22 #灯条宽度一致性
+min_v_control: 0.93 #设置最底亮度，排除反光干扰
+max_armor_angle: 6.0
+min_armor_angle: 1.0
+bar_size_ratio: 3.2

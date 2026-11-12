@@ -19,7 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   tf2_geometry_msgs
   geometry_msgs
-  message_generation
+  dynamic_reconfigure
 )
 find_package(OpenCV REQUIRED)
 
@@ -57,11 +57,11 @@ find_package(OpenCV REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
- add_message_files(
-   FILES
-   Detection.msg
-   DetectionFrame.msg
- )
+#  add_message_files(
+#    FILES
+#    Detection.msg
+#    DetectionFrame.msg
+#  )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -78,11 +78,11 @@ find_package(OpenCV REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs
+#   geometry_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -99,10 +99,10 @@ generate_messages(
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+  cfg/ArmorParams.cfg
+  # cfg/DynReconf2.cfg
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -116,7 +116,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES rm_vision
-  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs std_msgs
+  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs std_msgs dynamic_reconfigure ft_detection
 #  DEPENDS system_lib
   DEPENDS OpenCV
 )
@@ -160,6 +160,7 @@ include_directories(
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(image_sub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node

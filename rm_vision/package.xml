@@ -54,15 +54,13 @@
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
-    <depend>ft_detection</depend>
+  <depend>ft_detection</depend>
   <depend>cv_bridge</depend>
   <depend>image_transport</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
-
-  <build_depend>message_generation</build_depend>
-  <exec_depend>message_runtime</exec_depend>
+  <depend>dynamic_reconfigure</depend>
   
   <!-- The export tag contains other, unspecified, tags -->
   <export>

@@ -9,13 +9,16 @@
 
 #include "rm_vision/armor_detector.h"
 #include "rm_vision/armor_solver.h"
-#include "rm_vision/DetectionFrame.h"
-
+#include <ft_detection/DetectionFrame.h>
+#include <rm_vision/ArmorParamsConfig.h>
+#include <dynamic_reconfigure/server.h>
 
 //发布解码后的图像
 ros::Publisher debug_image_pub;
 //创建检测消息发布
 ros::Publisher detection_pub;
+//定义一个全局变量，保存当前的参数状态
+rm_vision::ArmorParamsConfig current_params;
 //调用寻找装甲板这个类
 ArmorDetector detector;
 //调用装甲板处理
@@ -35,22 +38,62 @@ int last_image_height = 0;
 
 void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg);
 void imageCallback(const sensor_msgs::ImageConstPtr& msg);
+void reconfigCallback(rm_vision::ArmorParamsConfig &config,uint32_t level);
 
 int main(int argc,char* argv[])
 {
     ros::init(argc,argv,"image_sub");//节点名字为image_sub
     ros::NodeHandle nh("~");//用私有句柄
 
-        // TF 父坐标系：默认 camera_optical_frame（机器人 TF 树上有这一帧）
-    std::string tf_parent;
-    nh.param<std::string>("tf_parent_frame", tf_parent, "camera_optical_frame");                                            
-    solver.setTfParent(tf_parent);
-    ROS_INFO_THROTTLE(2.0,"TF parent frame = [%s]", tf_parent.c_str());
-    
-    //从参数服务器读取话题名（预留接口，随时可改）
+    //从参数服务器读取话题名
     std::string image_topic, camera_info_topic;
     nh.param<std::string>("image_topic",image_topic,"/hk_camera/image_raw");
     nh.param<std::string>("camera_info_topic",camera_info_topic,"/hk_camera/camera_info");
+    // TF 父坐标系：默认 camera_optical_frame（机器人 TF 树上有这一帧）
+    std::string tf_parent;
+    nh.param<std::string>("tf_parent_frame", tf_parent, "camera_optical_frame");                                            
+    solver.setTfParent(tf_parent);
+    
+    // 颜色阈值(HSV)
+    nh.param("red_h_min1", current_params.red_h_min1, 0);
+    nh.param("red_h_max1", current_params.red_h_max1, 20);
+    nh.param("red_h_min2", current_params.red_h_min2, 150);
+    nh.param("red_h_max2", current_params.red_h_max2, 180);
+    nh.param("blue_h_min", current_params.blue_h_min, 95);
+    nh.param("blue_h_max", current_params.blue_h_max, 135);
+    nh.param("s_min", current_params.s_min, 90);
+    nh.param("s_max", current_params.s_max, 255);
+    nh.param("v_min", current_params.v_min, 120);
+    nh.param("v_max", current_params.v_max, 255);
+
+    // 灯条过滤
+    nh.param("min_area", current_params.min_area, 20.0);
+    nh.param("min_bar_ratio", current_params.min_bar_ratio, 1.5);
+    nh.param("max_bar_ratio", current_params.max_bar_ratio, 20.0);
+
+    // 装甲板物理尺寸
+    nh.param("small_half_w", current_params.small_half_w, 0.0675);
+    nh.param("big_half_w", current_params.big_half_w, 0.1175);
+    nh.param("bar_half_len", current_params.bar_half_len, 0.0275);
+
+    // 配对条件
+    nh.param("max_y_diff", current_params.max_y_diff, 0.25);
+    nh.param("max_angle_diff", current_params.max_angle_diff, 6.0);
+    nh.param("max_bar_length_diff", current_params.max_bar_length_diff, 0.20);
+    nh.param("max_bar_width_diff", current_params.max_bar_width_diff, 0.22);
+    nh.param("min_v_control", current_params.min_v_control, 0.93);
+    nh.param("max_armor_angle", current_params.max_armor_angle, 6.0);
+    nh.param("min_armor_angle", current_params.min_armor_angle, 1.0);
+
+    // 手动触发一次回调，把 YAML 的值喂给算法
+    reconfigCallback(current_params, 0);
+
+    // ================= [新增] 启动动态调参 Server =================
+    dynamic_reconfigure::Server<rm_vision::ArmorParamsConfig> server;
+    dynamic_reconfigure::Server<rm_vision::ArmorParamsConfig>::CallbackType f;
+    f = boost::bind(&reconfigCallback, _1, _2);
+    server.setCallback(f);
+
     //用image_transport订阅
     image_transport::ImageTransport it(nh);
     
@@ -61,7 +104,7 @@ int main(int argc,char* argv[])
     //用全局公开话题名，方便其他工具订阅
     debug_image_pub = nh.advertise<sensor_msgs::Image>("/ft/debug/image",1);
     //发布消息
-    detection_pub = nh.advertise<rm_vision::DetectionFrame>("/ft/detection",10);
+    detection_pub = nh.advertise<ft_detection::DetectionFrame>("/ft/detection",10);
     // 启动时打印实际订阅的话题，方便确认参数是否生效
     ROS_INFO_ONCE("Image subscribe started. Image: %s, CameraInfo: %s",
         image_topic.c_str(),camera_info_topic.c_str());
@@ -127,7 +170,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     detector.drawArmors(canvas, armors);   // 画框 + 序号 + 大小
 
     //发布检测消息
-    rm_vision::DetectionFrame frame_msg;//创建消息内容
+    ft_detection::DetectionFrame frame_msg;//创建消息内容
     frame_msg.header.stamp = msg->header.stamp;
     frame_msg.header.frame_id = last_frame_id;
 
@@ -145,9 +188,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
            std::isnan(pose.q.w())){
             continue;
         }
-        rm_vision::Detection detection_msg;
+        ft_detection::Detection detection_msg;
         detection_msg.id = tf_id;
-        detection_msg.is_Blue = (armor.color == "Blue");
+        detection_msg.is_red = (armor.color == "Red");
         detection_msg.is_large_armor = (armor.type == "Big");
         //位置
         detection_msg.pose.position.x = pose.tvec[0];
@@ -159,10 +202,16 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         detection_msg.pose.orientation.z = pose.q.z();
         detection_msg.pose.orientation.w = pose.q.w();
         //存入数据
+        for (int i = 0; i < 4; ++i) {
+            detection_msg.corners[i].x = armor.corners[i].x;
+            detection_msg.corners[i].y = armor.corners[i].y;
+            detection_msg.corners[i].z = 0.0;
+        }
+        detection_msg.confidence = 1.0;
         frame_msg.detections.push_back(detection_msg);
+
         //顶点、和 ID
         std::string id_pub = "ID:" + std::to_string(detection_msg.id);
-
         int baseline = 0;//防止字超出屏幕
         cv::Size text_size = cv::getTextSize(id_pub,cv::FONT_HERSHEY_SIMPLEX,
                                              0.51,2,&baseline);
@@ -186,4 +235,38 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     debug_image_pub.publish(out_image);
     //发布检测信息
     detection_pub.publish(frame_msg);
+}
+
+void reconfigCallback(rm_vision::ArmorParamsConfig &config,uint32_t level)
+{
+    current_params = config;
+    //更新 armor_detection 参数
+    ArmorDetector::Params det_params;
+    det_params.red_h_min1 = config.red_h_min1;
+    det_params.red_h_max1 = config.red_h_max1;
+    det_params.red_h_min2 = config.red_h_min2;
+    det_params.red_h_max2 = config.red_h_max2;
+    det_params.blue_h_min = config.blue_h_min;
+    det_params.blue_h_max = config.blue_h_max;
+    det_params.s_min = config.s_min;
+    det_params.s_max = config.s_max;
+    det_params.v_min = config.v_min;
+    det_params.v_max = config.v_max;
+    det_params.min_area = config.min_area;
+    det_params.min_bar_ratio = config.min_bar_ratio;
+    det_params.max_bar_ratio = config.max_bar_ratio;
+    det_params.max_y_diff = config.max_y_diff;
+    det_params.max_angle_diff = config.max_angle_diff;
+    det_params.max_bar_length_diff = config.max_bar_length_diff;
+    det_params.max_bar_width_diff = config.max_bar_width_diff;
+    det_params.min_v_control = config.min_v_control;
+    det_params.max_armor_angle = config.max_armor_angle;
+    det_params.min_armor_angle = config.min_armor_angle;
+    detector.setParams(det_params);
+    //更新 armor_solver 参数
+    ArmorSolver::Params solver_params;
+    solver_params.small_half_w = config.small_half_w;
+    solver_params.big_half_w = config.big_half_w;
+    solver_params.bar_half_len = config.bar_half_len;
+    solver.setParams(solver_params);
 }

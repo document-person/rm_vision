@@ -30,6 +30,26 @@ public:
     std::vector<Armor> detect(const cv::Mat& bgr_image);
     //画框
     void drawArmors(cv::Mat& image,const std::vector<Armor>& armors);
+    //参数服务器接口
+    struct Params
+    {
+        int red_h_min1 = 0, red_h_max1 = 20, red_h_min2 = 150, red_h_max2 = 180;
+        int blue_h_min = 95, blue_h_max = 135;
+        int s_min = 90, s_max = 255, v_min = 120, v_max = 255;
+        
+        double min_area = 20.0;
+        double min_bar_ratio = 1.5, max_bar_ratio = 20.0;
+        double max_bar_angle = 45.0;
+        
+        double max_y_diff = 0.25, max_angle_diff = 6.0;
+        double max_bar_length_diff = 0.20, max_bar_width_diff = 0.22;
+        double min_v_control = 0.93;
+        double max_armor_angle = 6.0, min_armor_angle = 1.0;
+        double bar_size_ratio = 3.2;
+    };
+    void setParams(const Params& params){
+        params_ = params;
+    }
 
 private:
     //颜色分割
@@ -39,5 +59,7 @@ private:
     //配对装甲板
     std::vector<Armor> matchArmors(
         const std::vector<LightBar>& bars,const std::string& color);
+    //参数服务器
+    Params params_;
 };
 #endif

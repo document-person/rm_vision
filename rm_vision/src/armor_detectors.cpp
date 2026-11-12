@@ -10,11 +10,14 @@ cv::Mat ArmorDetector::getColorMask(const cv::Mat& hsv,bool is_blue)
 {
     cv::Mat mask;
     if(is_blue){
-        cv::inRange(hsv,cv::Scalar(95,90,120),cv::Scalar(135,255,255),mask);
+        cv::inRange(hsv, cv::Scalar(params_.blue_h_min, params_.s_min, params_.v_min), 
+                    cv::Scalar(params_.blue_h_max, params_.s_max, params_.v_max), mask);
     }else{
         cv::Mat mask1,mask2;
-        cv::inRange(hsv,cv::Scalar(0,90,120),cv::Scalar(20,255,255),mask1);
-        cv::inRange(hsv,cv::Scalar(150,90,120),cv::Scalar(180,255,255),mask2);
+        cv::inRange(hsv, cv::Scalar(params_.red_h_min1, params_.s_min, params_.v_min), 
+                    cv::Scalar(params_.red_h_max1, params_.s_max, params_.v_max), mask1);
+        cv::inRange(hsv, cv::Scalar(params_.red_h_min2, params_.s_min, params_.v_min), 
+                    cv::Scalar(params_.red_h_max2, params_.s_max, params_.v_max), mask2);
         cv::bitwise_or(mask1,mask2,mask);//把两段色阈拼起来
     }
 
@@ -40,7 +43,8 @@ std::vector<LightBar> ArmorDetector::findLightBars(const cv::Mat& mask,const cv:
         double w = std::min(rect.size.width,rect.size.height);//宽
         double h = std::max(rect.size.width,rect.size.height);//长
         //过滤不合尺寸的
-        if(rect.size.area() < 20 || h/w < 1.5 || h/w > 20) continue;
+        if(rect.size.area() < params_.min_area ||
+           h/w < params_.min_bar_ratio || h/w > params_.max_bar_ratio) continue;
         
         cv::Point2f pts[4];
         rect.points(pts);
@@ -53,7 +57,7 @@ std::vector<LightBar> ArmorDetector::findLightBars(const cv::Mat& mask,const cv:
         // 灯条没有头尾，旋转 180° 看起来一样 → 把角度折到 [-90, 90)
         while (angle >=  90.0) angle -= 180.0;
         while (angle <  -90.0) angle += 180.0;
-        if (std::abs(angle) > 45.0) continue;//检测横躺的灯条
+        if(std::abs(angle) > params_.max_bar_angle) continue;//检测横躺的灯条
 
         //统计这根灯条的平均亮度(V)，用于筛选掉地面反光的灯条
         cv::Rect br = rect.boundingRect() & cv::Rect(0,0,mask.cols,mask.rows);
@@ -112,13 +116,17 @@ std::vector<Armor> ArmorDetector::matchArmors(
             while (angle_diff >=  90.0) angle_diff -= 180.0;
             while (angle_diff <  -90.0) angle_diff += 180.0;
 
-            if(y_diff > std::max(0.25 * max_len, 3.0) || std::abs(angle_diff) > 6.0) continue;
+            if(y_diff > std::max(params_.max_y_diff * max_len, 3.0) ||
+               std::abs(angle_diff) > params_.max_angle_diff) continue;
             
-            if(std::abs(left_bar.length - right_bar.length) > std::max(0.20 * max_len, 4.0)) continue;//长度一致性
-            if(std::abs(left_bar.width  - right_bar.width ) > std::max(0.22 * max_w, 2.0))   continue;//宽度一致性
+            if(std::abs(left_bar.length - right_bar.length) >
+               std::max(params_.max_bar_length_diff * max_len, 4.0)) continue;//长度一致性
+            if(std::abs(left_bar.width  - right_bar.width ) >
+               std::max(params_.max_bar_width_diff * max_w, 2.0))   continue;//宽度一致性
 
             //   如果还有反光漏进来，把这个 0.93 调大（更严）；如果真板被误杀，调小
-            if(max_v > 1.0 && std::min(left_bar.mean_v, right_bar.mean_v) < 0.93 * max_v) continue;
+            if(max_v > 1.0 && std::min(left_bar.mean_v, right_bar.mean_v) <
+               params_.min_v_control * max_v) continue;
             
             //消除距离错觉
             double ratio = x_diff / max_len;
@@ -130,9 +138,9 @@ std::vector<Armor> ArmorDetector::matchArmors(
             //     left_bar.angle, right_bar.angle,
             //     y_diff , left_bar.mean_v, right_bar.mean_v);
 
-            if(ratio > 6.0 || ratio < 1.0) continue;
+            if(ratio > params_.max_armor_angle || ratio < params_.min_armor_angle) continue;
             //判断大小装甲板
-            std::string bar_size = (ratio > 3.2) ? "Big" : "Small";
+            std::string bar_size = (ratio > params_.bar_size_ratio) ? "Big" : "Small";
 
             int left_x = static_cast<int>(std::min(left_bar.center.x , right_bar.center.x));//左灯条x坐标
             int right_x = static_cast<int>(std::max(left_bar.center.x , right_bar.center.x));//右灯条

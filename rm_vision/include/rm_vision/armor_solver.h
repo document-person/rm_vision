@@ -26,6 +26,16 @@ public:
         double reproj_rms = 0.0;//重投影（算精修后的误差）
         bool valid = false;
     };
+    //参数服务器接口
+    struct Params
+    {
+        float small_half_w = 0.0675f;
+        float big_half_w = 0.1175f;
+        float bar_half_len = 0.0275f;
+    };
+    void setParams(const Params& params){
+        params_ = params;
+    }
     ArmorSolver();
     //接收相机内参
     void setCameraInfo(const cv::Mat& K,const cv::Mat& D,const cv::Size& image_size);
@@ -47,9 +57,9 @@ public:
     }
 private:
     //确定灯条四个点的3D坐标
-    static std::vector<cv::Point3f> find3DPoints(const std::string& type);
+    std::vector<cv::Point3f> find3DPoints(const std::string& type);
     //检查角点顺序
-    static bool cornerscheck(const std::vector<cv::Point2f>& corners);
+    bool cornerscheck(const std::vector<cv::Point2f>& corners);
     cv::Mat K_;//CV_64F  3x3
     cv::Mat D_;//CV_64F  1xN
     cv::Size image_size_;//CameraInfo 声明的分辨率
@@ -61,6 +71,7 @@ private:
     // double max_aspect_ = 0.0;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     std::string tf_parent_;//TF 父坐标系（空 = 用 header.frame_id）
+    Params params_;
 };
 
 #endif

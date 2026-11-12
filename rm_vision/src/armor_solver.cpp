@@ -5,13 +5,6 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include "rm_vision/armor_solver.h"
 
-namespace{
-    // 赛规尺寸（外沿到外沿），单位：米
-    constexpr float kSmallHalfW = 0.0675f;// 小装甲板 135mm /2
-    constexpr float kBigHalfW = 0.1175f;// 大装甲板 235mm /2
-    constexpr float kBarHalfLen = 0.0275f;// 灯条 55 mm /2
-}
-
 ArmorSolver::ArmorSolver(){}
 //提取相机的参数
 void ArmorSolver::setCameraInfo(const cv::Mat& K,const cv::Mat& D,
@@ -31,8 +24,8 @@ void ArmorSolver::setCameraInfo(const cv::Mat& K,const cv::Mat& D,
 //确定灯条四个点的3D坐标
 std::vector<cv::Point3f> ArmorSolver::find3DPoints(const std::string& type)
 {
-    const float half_w = (type == "Big") ? kBigHalfW :kSmallHalfW;
-    const float half_h = kBarHalfLen;
+    const float half_w = (type == "Big") ? params_.big_half_w : params_.small_half_w;
+    const float half_h = params_.bar_half_len;
     return{
         {-half_w,-half_h,0.0f},//左上
         {half_w,-half_h,0.0f}, //右上
