@@ -185,7 +185,7 @@ void ArmorDetector::drawArmors(cv::Mat& image,const std::vector<Armor>& armors)
                                                        : cv::Scalar(0,0,255);
        cv::rectangle(image,armor.bounding_box,draw_color,2);//画框，线宽为2
        // 标记文字：#序号 大小 颜色
-       std::string label = "#" + std::to_string(i) + " " + armor.type + " " + armor.color;
+       std::string label = armor.type + " " + armor.color;
        int baseline = 0;
        cv::Size text_size = cv::getTextSize(label,
             cv::FONT_HERSHEY_SIMPLEX,0.5,1,&baseline);
@@ -194,7 +194,7 @@ void ArmorDetector::drawArmors(cv::Mat& image,const std::vector<Armor>& armors)
        if (ty < text_size.height) {
            ty = armor.bounding_box.y + armor.bounding_box.height + text_size.height + 4;
        }
-       cv::putText(image,label,cv::Point(armor.bounding_box.x,ty),
+       cv::putText(image,label,cv::Point(armor.bounding_box.x + 10,ty),
                    cv::FONT_HERSHEY_SIMPLEX,0.5,draw_color,1);
     }
 }

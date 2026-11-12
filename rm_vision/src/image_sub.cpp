@@ -5,13 +5,17 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <algorithm>
+#include <cmath>
 
 #include "rm_vision/armor_detector.h"
 #include "rm_vision/armor_solver.h"
+#include "rm_vision/DetectionFrame.h"
 
 
 //发布解码后的图像
 ros::Publisher debug_image_pub;
+//创建检测消息发布
+ros::Publisher detection_pub;
 //调用寻找装甲板这个类
 ArmorDetector detector;
 //调用装甲板处理
@@ -56,6 +60,8 @@ int main(int argc,char* argv[])
     ros::Subscriber info_sub = nh.subscribe(camera_info_topic,10,cameraInfoCallback);
     //用全局公开话题名，方便其他工具订阅
     debug_image_pub = nh.advertise<sensor_msgs::Image>("/ft/debug/image",1);
+    //发布消息
+    detection_pub = nh.advertise<rm_vision::DetectionFrame>("/ft/detection",10);
     // 启动时打印实际订阅的话题，方便确认参数是否生效
     ROS_INFO_ONCE("Image subscribe started. Image: %s, CameraInfo: %s",
         image_topic.c_str(),camera_info_topic.c_str());
@@ -120,19 +126,64 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     src.copyTo(canvas);                    // 唯一的一次拷贝
     detector.drawArmors(canvas, armors);   // 画框 + 序号 + 大小
 
-    //求解位姿 + 画轴 + 广播 TF
+    //发布检测消息
+    rm_vision::DetectionFrame frame_msg;//创建消息内容
+    frame_msg.header.stamp = msg->header.stamp;
+    frame_msg.header.frame_id = last_frame_id;
+
+    //求解位姿 + 画轴 + 广播 TF + 发布检测消息
     int tf_id = 0;
     for(const auto& armor : armors){
         ArmorSolver::Pose pose;
         if(!solver.solve(armor,src.size(),pose)) continue;//坏解直接跳过
         solver.drawAxes(canvas,pose);// 画在 canvas 上，会随 /ft/debug/image 发出去
         solver.broadcastTF(pose,msg->header,"armor"+std::to_string(tf_id));
+
+        //拦截Nan
+        if(std::isnan(pose.tvec[0]) || std::isnan(pose.tvec[1]) || std::isnan(pose.tvec[2]) ||
+           std::isnan(pose.q.x()) || std::isnan(pose.q.y()) || std::isnan(pose.q.z()) ||
+           std::isnan(pose.q.w())){
+            continue;
+        }
+        rm_vision::Detection detection_msg;
+        detection_msg.id = tf_id;
+        detection_msg.is_Blue = (armor.color == "Blue");
+        detection_msg.is_large_armor = (armor.type == "Big");
+        //位置
+        detection_msg.pose.position.x = pose.tvec[0];
+        detection_msg.pose.position.y = pose.tvec[1];
+        detection_msg.pose.position.z = pose.tvec[2];
+        //四元数
+        detection_msg.pose.orientation.x = pose.q.x();
+        detection_msg.pose.orientation.y = pose.q.y();
+        detection_msg.pose.orientation.z = pose.q.z();
+        detection_msg.pose.orientation.w = pose.q.w();
+        //存入数据
+        frame_msg.detections.push_back(detection_msg);
+        //顶点、和 ID
+        std::string id_pub = "ID:" + std::to_string(detection_msg.id);
+
+        int baseline = 0;//防止字超出屏幕
+        cv::Size text_size = cv::getTextSize(id_pub,cv::FONT_HERSHEY_SIMPLEX,
+                                             0.51,2,&baseline);
+        int text_y = armor.bounding_box.y - 20;
+        if(text_y - text_size.height < 0){
+            text_y = armor.bounding_box.y + armor.bounding_box.height + text_size.height + 5;
+        }
+
+        cv::putText(canvas,id_pub,cv::Point(armor.bounding_box.x,text_y),
+                    cv::FONT_HERSHEY_SIMPLEX,0.51,cv::Scalar(0,255,0),2);
+        for(const auto& c : armor.corners){
+            cv::circle(canvas,c,3,cv::Scalar(0,255,0),-1);
+        }
         tf_id += 1;
     }
-
+    
     ROS_INFO_THROTTLE(1.0, "Armors found: %zu | camera info: %s",
         armors.size(), camera_info_received ? "YES" : "NO");
 
     //发布调试图像（消息里已经是画好框的图，publish 不再拷贝）
     debug_image_pub.publish(out_image);
+    //发布检测信息
+    detection_pub.publish(frame_msg);
 }
