@@ -65,11 +65,9 @@ std::vector<LightBar> ArmorDetector::findLightBars(const cv::Mat& mask,const cv:
         if (br.area() > 0) {//判断灯条必须在图像里面
             mean_v = cv::mean(hsv(br), mask(br))[2];
         }
-
+        double fill = br.area() > 0 ? (cv::countNonZero(mask(br)) / (double)br.area()) : 0;
+        if(fill < params_.min_fill_ratio) continue;
         // 用于调试：检查每根灯条的信息
-        // cv::Rect br = rect.boundingRect();
-        // br &= cv::Rect(0,0,mask.cols,mask.rows);
-        // double fill = br.area() > 0 ? (cv::countNonZero(mask(br)) / (double)br.area()) : 0;
         // ROS_INFO_THROTTLE(1.0,"bar: w=%.1f len=%.1f ang=%.1f  fill=%.2f", w, h, angle, fill);
 
         //把合格的信息打包存入结构体，加入到结果列表中
@@ -138,7 +136,7 @@ std::vector<Armor> ArmorDetector::matchArmors(
             //     left_bar.angle, right_bar.angle,
             //     y_diff , left_bar.mean_v, right_bar.mean_v);
 
-            if(ratio > params_.max_armor_angle || ratio < params_.min_armor_angle) continue;
+            if(ratio > params_.max_x_dist_ratio || ratio < params_.min_x_dist_ratio) continue;
             //判断大小装甲板
             std::string bar_size = (ratio > params_.bar_size_ratio) ? "Big" : "Small";
 

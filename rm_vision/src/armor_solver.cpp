@@ -58,7 +58,7 @@ double ArmorSolver::reprojectionRms(const std::vector<cv::Point3f>& obj,
 bool ArmorSolver::solve(const Armor& armor,const cv::Size& image_size,Pose& out)
 {
     //超过0.5秒没有解算就忘记上一帧的记忆，用于后面的防止大小板误判
-    if(has_last_ && (ros::Time::now() - last_time_).toSec() > 0.5){
+    if(has_last_ && (ros::Time::now() - last_time_).toSec() > params_.memory_timeout){
         has_last_ = false;
     }
     out = Pose{};//清空上一轮的输出，防止数据残留
@@ -136,7 +136,7 @@ bool ArmorSolver::solve(const Armor& armor,const cv::Size& image_size,Pose& out)
     cv::solvePnPRefineLM(obj,armor.corners,K_,D_,out.rvec,out.tvec,criteria);
     //算一下精修完的误差
     out.reproj_rms = reprojectionRms(obj,armor.corners,out.rvec,out.tvec);
-    out.valid = (out.reproj_rms < 3.0);
+    out.valid = (out.reproj_rms < params_.max_reproj_error);
     //把旋转向量变成旋转矩阵
     cv::Mat R;
     cv::Rodrigues(out.rvec,R);
@@ -146,8 +146,7 @@ bool ArmorSolver::solve(const Armor& armor,const cv::Size& image_size,Pose& out)
         }
     }
     // 打开这个开关 = 用物理先验把俯仰/横滚按死，只保留偏航，再用"高度定 z、板心定 x,y"重算平移
-    constexpr bool kForceVerticalPlate = true;
-    if(kForceVerticalPlate){
+    if(params_.force_vertical_plate){
         const double h_px_v = cv::norm(armor.corners[3] - armor.corners[0]);
         if(h_px_v > 1.0){//取值1.0,防止因为数据太小而不可靠
             const double yaw_v = std::atan2(out.R(0,2), out.R(2,2));  //只取偏航角

@@ -70,6 +70,8 @@ int main(int argc,char* argv[])
     nh.param("min_area", current_params.min_area, 20.0);
     nh.param("min_bar_ratio", current_params.min_bar_ratio, 1.5);
     nh.param("max_bar_ratio", current_params.max_bar_ratio, 20.0);
+    nh.param("max_bar_angle", current_params.max_bar_angle, 45.0);
+    nh.param("min_fill_ratio",current_params.min_fill_ratio, 0.5);
 
     // 装甲板物理尺寸
     nh.param("small_half_w", current_params.small_half_w, 0.0675);
@@ -82,9 +84,18 @@ int main(int argc,char* argv[])
     nh.param("max_bar_length_diff", current_params.max_bar_length_diff, 0.20);
     nh.param("max_bar_width_diff", current_params.max_bar_width_diff, 0.22);
     nh.param("min_v_control", current_params.min_v_control, 0.93);
-    nh.param("max_armor_angle", current_params.max_armor_angle, 6.0);
-    nh.param("min_armor_angle", current_params.min_armor_angle, 1.0);
-
+    nh.param("max_x_dist_ratio", current_params.max_x_dist_ratio, 6.0);
+    nh.param("min_x_dist_ratio", current_params.min_x_dist_ratio, 1.0);
+    nh.param("bar_size_ratio", current_params.bar_size_ratio, 3.2);
+    //解算器参数
+    nh.param("max_reproj_error", current_params.max_reproj_error, 3.0);
+    nh.param("force_vertical_plate", current_params.force_vertical_plate, true);
+    nh.param("memory_timeout", current_params.memory_timeout, 0.5);
+    //跟踪预留
+    nh.param("track_alpha", current_params.track_alpha, 0.5);
+    nh.param("track_beta", current_params.track_beta, 0.2);
+    nh.param("track_gate", current_params.track_gate, 0.5);
+    nh.param("track_predict_T", current_params.track_predict_T, 0.1);
     // 手动触发一次回调，把 YAML 的值喂给算法
     reconfigCallback(current_params, 0);
 
@@ -93,13 +104,17 @@ int main(int argc,char* argv[])
     dynamic_reconfigure::Server<rm_vision::ArmorParamsConfig>::CallbackType f;
     f = boost::bind(&reconfigCallback, _1, _2);
     server.setCallback(f);
+    //强制用 YAML 的值覆盖掉 CFG 的默认值
+    server.updateConfig(current_params);
 
     //用image_transport订阅
     image_transport::ImageTransport it(nh);
     
     //数据处理和相机内参
-    image_transport::Subscriber image_sub = it.subscribe(image_topic,5,imageCallback,
-        image_transport::TransportHints("compressed"));
+    int queue_size;
+    nh.param("queue_size", queue_size, 5);
+    image_transport::Subscriber image_sub = it.subscribe(image_topic,queue_size,
+                imageCallback,image_transport::TransportHints("compressed"));
     ros::Subscriber info_sub = nh.subscribe(camera_info_topic,10,cameraInfoCallback);
     //用全局公开话题名，方便其他工具订阅
     debug_image_pub = nh.advertise<sensor_msgs::Image>("/ft/debug/image",1);
@@ -252,21 +267,29 @@ void reconfigCallback(rm_vision::ArmorParamsConfig &config,uint32_t level)
     det_params.s_max = config.s_max;
     det_params.v_min = config.v_min;
     det_params.v_max = config.v_max;
+    //灯条
     det_params.min_area = config.min_area;
     det_params.min_bar_ratio = config.min_bar_ratio;
     det_params.max_bar_ratio = config.max_bar_ratio;
+    det_params.max_bar_angle = config.max_bar_angle;
+    det_params.min_fill_ratio = config.min_fill_ratio;
+    //装甲板
     det_params.max_y_diff = config.max_y_diff;
     det_params.max_angle_diff = config.max_angle_diff;
     det_params.max_bar_length_diff = config.max_bar_length_diff;
     det_params.max_bar_width_diff = config.max_bar_width_diff;
     det_params.min_v_control = config.min_v_control;
-    det_params.max_armor_angle = config.max_armor_angle;
-    det_params.min_armor_angle = config.min_armor_angle;
+    det_params.max_x_dist_ratio = config.max_x_dist_ratio;
+    det_params.min_x_dist_ratio = config.min_x_dist_ratio;
+    det_params.bar_size_ratio = config.bar_size_ratio;
     detector.setParams(det_params);
     //更新 armor_solver 参数
     ArmorSolver::Params solver_params;
     solver_params.small_half_w = config.small_half_w;
     solver_params.big_half_w = config.big_half_w;
     solver_params.bar_half_len = config.bar_half_len;
+    solver_params.max_reproj_error = config.max_reproj_error;
+    solver_params.force_vertical_plate = config.force_vertical_plate;
+    solver_params.memory_timeout = config.memory_timeout;
     solver.setParams(solver_params);
 }

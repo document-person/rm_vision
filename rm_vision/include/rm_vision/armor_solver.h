@@ -32,6 +32,9 @@ public:
         float small_half_w = 0.0675f;
         float big_half_w = 0.1175f;
         float bar_half_len = 0.0275f;
+        double max_reproj_error = 3.0;
+        bool force_vertical_plate = true;
+        double memory_timeout = 0.5;
     };
     void setParams(const Params& params){
         params_ = params;

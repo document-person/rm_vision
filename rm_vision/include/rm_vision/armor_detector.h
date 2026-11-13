@@ -40,11 +40,12 @@ public:
         double min_area = 20.0;
         double min_bar_ratio = 1.5, max_bar_ratio = 20.0;
         double max_bar_angle = 45.0;
+        double min_fill_ratio = 0.5;
         
         double max_y_diff = 0.25, max_angle_diff = 6.0;
         double max_bar_length_diff = 0.20, max_bar_width_diff = 0.22;
         double min_v_control = 0.93;
-        double max_armor_angle = 6.0, min_armor_angle = 1.0;
+        double max_x_dist_ratio = 6.0, min_x_dist_ratio = 1.0;
         double bar_size_ratio = 3.2;
     };
     void setParams(const Params& params){
@@ -55,7 +56,7 @@ private:
     //颜色分割
     cv::Mat getColorMask(const cv::Mat& hsv,bool is_blue);
     //找灯条
-    std::vector<LightBar> findLightBars(const cv::Mat& mask,const cv::Mat& hsv);
+    std::vector<LightBar>findLightBars(const cv::Mat& mask,const cv::Mat& hsv);
     //配对装甲板
     std::vector<Armor> matchArmors(
         const std::vector<LightBar>& bars,const std::string& color);

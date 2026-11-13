@@ -2,6 +2,7 @@
 image_topic: "/hk_camera/image_raw"
 camera_info_topic: "/hk_camera/camera_info"
 tf_parent_frame: "camera_optical_frame"
+queue_size: 5
 
 #颜色阈值(HSV)
 red_h_min1: 0
@@ -20,6 +21,7 @@ min_area: 20.0
 min_bar_ratio: 1.5
 max_bar_ratio: 20.0
 max_bar_angle: 45.0
+min_fill_ratio: 0.5
 
 #配对装甲板
   #装甲板参数
@@ -33,6 +35,17 @@ max_angle_diff: 6.0
 max_bar_length_diff: 0.20 #灯条长度一致性
 max_bar_width_diff: 0.22 #灯条宽度一致性
 min_v_control: 0.93 #设置最底亮度，排除反光干扰
-max_armor_angle: 6.0
-min_armor_angle: 1.0
+max_x_dist_ratio: 6.0
+min_x_dist_ratio: 1.0
 bar_size_ratio: 3.2
+
+#解算器参数
+max_reproj_error: 3.0
+force_vertical_plate: true
+memory_timeout: 0.5
+
+#跟踪预留
+track_alpha: 0.5
+track_beta: 0.2
+track_gate: 0.5
+track_predict_T: 0.1
