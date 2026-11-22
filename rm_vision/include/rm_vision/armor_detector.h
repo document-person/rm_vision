@@ -2,7 +2,7 @@
 #define ARMOR_DETECTOR_H
 
 #include <opencv2/opencv.hpp>
-#include <vector>//动态数组
+#include <vector>
 #include <string>
 
 struct LightBar
@@ -20,7 +20,7 @@ struct Armor
     cv::Rect bounding_box;//外框
     std::string type;//大还是小
     std::string color;//红还是蓝
-    std::vector<cv::Point2f> corners; // 四角点 (左上、右上、右下、左下) 供 PnP 使用
+    std::vector<cv::Point2f> corners;// 四角点 (左上、右上、右下、左下) 供 PnP 使用
 };
 
 class ArmorDetector{
@@ -42,9 +42,9 @@ public:
         double max_bar_angle = 45.0;
         double min_fill_ratio = 0.5;
         
-        double max_y_diff = 0.25, max_angle_diff = 6.0;
-        double max_bar_length_diff = 0.20, max_bar_width_diff = 0.22;
-        double min_v_control = 0.93;
+        double max_y_diff = 0.25, max_angle_diff = 10.0;
+        double max_bar_length_diff = 0.30, max_bar_width_diff = 0.40;
+        double min_v_control = 0.935;
         double max_x_dist_ratio = 6.0, min_x_dist_ratio = 1.0;
         double bar_size_ratio = 3.2;
     };

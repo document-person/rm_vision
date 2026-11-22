@@ -31,10 +31,10 @@ bar_half_len: 0.0275
   
   #配对条件
 max_y_diff: 0.25
-max_angle_diff: 6.0
-max_bar_length_diff: 0.20 #灯条长度一致性
-max_bar_width_diff: 0.22 #灯条宽度一致性
-min_v_control: 0.93 #设置最底亮度，排除反光干扰
+max_angle_diff: 10.0
+max_bar_length_diff: 0.30 #灯条长度一致性
+max_bar_width_diff: 0.40 #灯条宽度一致性
+min_v_control: 0.935 #设置最底亮度，排除反光干扰
 max_x_dist_ratio: 6.0
 min_x_dist_ratio: 1.0
 bar_size_ratio: 3.2
@@ -45,7 +45,20 @@ force_vertical_plate: true
 memory_timeout: 0.5
 
 #跟踪预留
-track_alpha: 0.5
-track_beta: 0.2
-track_gate: 0.5
-track_predict_T: 0.1
+track_gate_chi2: 11.34 #关联门限
+track_confirm_hits: 2
+track_lost_time: 0.5
+track_max_tracks: 8
+
+#卡尔曼滤波
+track_R_xy: 0.0001 #xy不会出错
+track_R_z: 0.02
+track_acc_var: 6.0 #3*3
+track_vel_var_max: 0.50
+track_v_max: 5.0
+track_a_max: 10.0 #单帧速度变化上限
+track_dv_step: 0.5 #单帧速度修正上限
+track_reacq_time: 1.5 #目标层 ID：断档容忍时间
+track_reacq_dist: 0.8 #目标层 ID：跳变容忍距离
+track_id_memory: 4.0 #断档后保留 id 的时长
+T: 0.1 #预测位置飞行时间

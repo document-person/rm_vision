@@ -45,7 +45,6 @@ std::vector<LightBar> ArmorDetector::findLightBars(const cv::Mat& mask,const cv:
         //过滤不合尺寸的
         if(rect.size.area() < params_.min_area ||
            h/w < params_.min_bar_ratio || h/w > params_.max_bar_ratio) continue;
-        
         cv::Point2f pts[4];
         rect.points(pts);
         cv::Point2f e1 = pts[1] - pts[0];//注意得到的是向量
@@ -67,6 +66,7 @@ std::vector<LightBar> ArmorDetector::findLightBars(const cv::Mat& mask,const cv:
         }
         double fill = br.area() > 0 ? (cv::countNonZero(mask(br)) / (double)br.area()) : 0;
         if(fill < params_.min_fill_ratio) continue;
+
         // 用于调试：检查每根灯条的信息
         // ROS_INFO_THROTTLE(1.0,"bar: w=%.1f len=%.1f ang=%.1f  fill=%.2f", w, h, angle, fill);
 
@@ -97,8 +97,6 @@ std::vector<Armor> ArmorDetector::matchArmors(
         if(used[i]) continue;
         for(size_t j=i+1;j<bars.size();++j){
             if(used[j]) continue;
-            // const auto& left_bar = bars[i];
-            // const auto& right_bar = bars[j];
             const bool i_is_left = (bars[i].center.x <= bars[j].center.x);
             const auto& left_bar = i_is_left ? bars[i] : bars[j];
             const auto& right_bar = i_is_left ? bars[j] : bars[i];
@@ -114,13 +112,13 @@ std::vector<Armor> ArmorDetector::matchArmors(
             while (angle_diff >=  90.0) angle_diff -= 180.0;
             while (angle_diff <  -90.0) angle_diff += 180.0;
 
-            if(y_diff > std::max(params_.max_y_diff * max_len, 3.0) ||
-               std::abs(angle_diff) > params_.max_angle_diff) continue;
+            if(y_diff > std::max(params_.max_y_diff * max_len, 3.0)) continue;
+            if(std::abs(angle_diff) > params_.max_angle_diff) continue;
             
             if(std::abs(left_bar.length - right_bar.length) >
                std::max(params_.max_bar_length_diff * max_len, 4.0)) continue;//长度一致性
             if(std::abs(left_bar.width  - right_bar.width ) >
-               std::max(params_.max_bar_width_diff * max_w, 2.0))   continue;//宽度一致性
+               std::max(params_.max_bar_width_diff * max_w, 2.0)) continue;//宽度一致性
 
             //   如果还有反光漏进来，把这个 0.93 调大（更严）；如果真板被误杀，调小
             if(max_v > 1.0 && std::min(left_bar.mean_v, right_bar.mean_v) <

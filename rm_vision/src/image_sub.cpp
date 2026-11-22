@@ -13,6 +13,10 @@
 #include <rm_vision/ArmorParamsConfig.h>
 #include <dynamic_reconfigure/server.h>
 
+#include <rm_vision/TrackArray.h>//s
+
+rm_vision::TrackArray::ConstPtr latest_tracks;//s
+
 //发布解码后的图像
 ros::Publisher debug_image_pub;
 //创建检测消息发布
@@ -36,14 +40,18 @@ cv::Mat last_dist_D;//畸变系数
 int last_image_width = 0;
 int last_image_height = 0;
 
+void trackCallback(const rm_vision::TrackArray::ConstPtr& msg) {
+    latest_tracks = msg; // 每次收到最新数据就覆盖
+}
+
 void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg);
 void imageCallback(const sensor_msgs::ImageConstPtr& msg);
 void reconfigCallback(rm_vision::ArmorParamsConfig &config,uint32_t level);
 
 int main(int argc,char* argv[])
 {
-    ros::init(argc,argv,"image_sub");//节点名字为image_sub
-    ros::NodeHandle nh("~");//用私有句柄
+    ros::init(argc,argv,"image_sub");
+    ros::NodeHandle nh("~");
 
     //从参数服务器读取话题名
     std::string image_topic, camera_info_topic;
@@ -80,10 +88,10 @@ int main(int argc,char* argv[])
 
     // 配对条件
     nh.param("max_y_diff", current_params.max_y_diff, 0.25);
-    nh.param("max_angle_diff", current_params.max_angle_diff, 6.0);
-    nh.param("max_bar_length_diff", current_params.max_bar_length_diff, 0.20);
-    nh.param("max_bar_width_diff", current_params.max_bar_width_diff, 0.22);
-    nh.param("min_v_control", current_params.min_v_control, 0.93);
+    nh.param("max_angle_diff", current_params.max_angle_diff, 10.0);
+    nh.param("max_bar_length_diff", current_params.max_bar_length_diff, 0.30);
+    nh.param("max_bar_width_diff", current_params.max_bar_width_diff, 0.40);
+    nh.param("min_v_control", current_params.min_v_control, 0.935);
     nh.param("max_x_dist_ratio", current_params.max_x_dist_ratio, 6.0);
     nh.param("min_x_dist_ratio", current_params.min_x_dist_ratio, 1.0);
     nh.param("bar_size_ratio", current_params.bar_size_ratio, 3.2);
@@ -91,15 +99,8 @@ int main(int argc,char* argv[])
     nh.param("max_reproj_error", current_params.max_reproj_error, 3.0);
     nh.param("force_vertical_plate", current_params.force_vertical_plate, true);
     nh.param("memory_timeout", current_params.memory_timeout, 0.5);
-    //跟踪预留
-    nh.param("track_alpha", current_params.track_alpha, 0.5);
-    nh.param("track_beta", current_params.track_beta, 0.2);
-    nh.param("track_gate", current_params.track_gate, 0.5);
-    nh.param("track_predict_T", current_params.track_predict_T, 0.1);
-    // 手动触发一次回调，把 YAML 的值喂给算法
     reconfigCallback(current_params, 0);
 
-    // ================= [新增] 启动动态调参 Server =================
     dynamic_reconfigure::Server<rm_vision::ArmorParamsConfig> server;
     dynamic_reconfigure::Server<rm_vision::ArmorParamsConfig>::CallbackType f;
     f = boost::bind(&reconfigCallback, _1, _2);
@@ -120,12 +121,14 @@ int main(int argc,char* argv[])
     debug_image_pub = nh.advertise<sensor_msgs::Image>("/ft/debug/image",1);
     //发布消息
     detection_pub = nh.advertise<ft_detection::DetectionFrame>("/ft/detection",10);
+
+    ros::Subscriber track_sub = nh.subscribe("/ft/track", 10, trackCallback);
+    
     // 启动时打印实际订阅的话题，方便确认参数是否生效
     ROS_INFO_ONCE("Image subscribe started. Image: %s, CameraInfo: %s",
         image_topic.c_str(),camera_info_topic.c_str());
     
     ros::spin();
-
     return 0;
 }
 //内参回调
@@ -191,6 +194,11 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
     //求解位姿 + 画轴 + 广播 TF + 发布检测消息
     int tf_id = 0;
+    // [调试] 记录"第一个目标的 PnP 位置"和"帧间跳变"，直接画在 debug 图上，
+    //   用来定位 RViz 里那次 ~1 m 的瞬移到底是哪一帧、跳了多少。
+    static double dbg_last_p[3] = {0.0, 0.0, 0.0};
+    static bool   dbg_has_last  = false;
+    int det_idx = 0;   // 本帧已经发布出去的第几个 detection
     for(const auto& armor : armors){
         ArmorSolver::Pose pose;
         if(!solver.solve(armor,src.size(),pose)) continue;//坏解直接跳过
@@ -225,6 +233,33 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
         detection_msg.confidence = 1.0;
         frame_msg.detections.push_back(detection_msg);
 
+        // [调试] 只跟踪"第一个目标"的坐标和跳变
+        if(det_idx == 0){
+            double dp = 0.0;
+            if(dbg_has_last){
+                const double dx = pose.tvec[0] - dbg_last_p[0];
+                const double dy = pose.tvec[1] - dbg_last_p[1];
+                const double dz = pose.tvec[2] - dbg_last_p[2];
+                dp = std::sqrt(dx*dx + dy*dy + dz*dz);
+            }
+            dbg_last_p[0] = pose.tvec[0];
+            dbg_last_p[1] = pose.tvec[1];
+            dbg_last_p[2] = pose.tvec[2];
+            dbg_has_last = true;
+
+            const cv::Scalar col = (dp > 0.30) ? cv::Scalar(0, 0, 255)   // 跳变>30cm 标红
+                                               : cv::Scalar(0, 255, 0);
+            const std::string s1 = cv::format("PnP0 x=%+.3f y=%+.3f z=%.3f  dP=%.3f m",
+                                              pose.tvec[0], pose.tvec[1], pose.tvec[2], dp);
+            const std::string s2 = "armors=" + std::to_string(armors.size()) +
+                                   " det="    + std::to_string(frame_msg.detections.size());
+            cv::putText(canvas, s1, cv::Point(10, canvas.rows - 14),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.6, col, 2);
+            cv::putText(canvas, s2, cv::Point(10, canvas.rows - 42),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 2);
+        }
+        det_idx++;
+
         //顶点、和 ID
         std::string id_pub = "ID:" + std::to_string(detection_msg.id);
         int baseline = 0;//防止字超出屏幕
@@ -245,6 +280,28 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     
     ROS_INFO_THROTTLE(1.0, "Armors found: %zu | camera info: %s",
         armors.size(), camera_info_received ? "YES" : "NO");
+
+
+        // 在图像左上角叠加跟踪数据
+    int y_offset = 30; // 初始 Y 坐标
+    if (latest_tracks && !latest_tracks->tracks.empty()) {
+        for (const auto& t : latest_tracks->tracks) {
+            // 只显示正在被跟踪的，或者全显示
+             std::string text = cv::format("ID:%d | P(m): %.2f %.2f %.2f | V(m/s): %.2f %.2f %.2f", 
+                t.id, 
+                t.Pose.position.x, t.Pose.position.y, t.Pose.position.z,
+                t.velocity.x, t.velocity.y, t.velocity.z
+            );
+            
+            // 为了防止白字看不清，先用黑字画一遍作阴影（偏移 1 个像素）
+            cv::putText(canvas, text, cv::Point(10, y_offset), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 0, 0), 2);
+            // 再用黄绿色画字
+            cv::putText(canvas, text, cv::Point(10, y_offset), cv::FONT_HERSHEY_SIMPLEX, 0.6, cv::Scalar(0, 255, 255), 1);
+            
+            y_offset += 30; // 如果有多个目标，往下挪一行
+        }
+    }
+    
 
     //发布调试图像（消息里已经是画好框的图，publish 不再拷贝）
     debug_image_pub.publish(out_image);

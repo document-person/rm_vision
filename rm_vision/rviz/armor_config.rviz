@@ -7,7 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /TF1
-        - /TF1/Status1
+        - /MarkerArray1
       Splitter Ratio: 0.5
     Tree Height: 840
   - Class: rviz/Selection
@@ -62,9 +62,39 @@ Visualization Manager:
         All Enabled: true
         armor0:
           Value: true
-        armor1:
+        base_link:
+          Value: true
+        base_pitch:
+          Value: true
+        base_yaw:
+          Value: true
+        camera2_optical_frame:
+          Value: true
+        camera_link:
           Value: true
         camera_optical_frame:
+          Value: true
+        gimbal_imu:
+          Value: true
+        left_back_wheel:
+          Value: true
+        left_friction_wheel:
+          Value: true
+        left_front_wheel:
+          Value: true
+        odom:
+          Value: true
+        pitch:
+          Value: true
+        right_back_wheel:
+          Value: true
+        right_friction_wheel:
+          Value: true
+        right_front_wheel:
+          Value: true
+        trigger:
+          Value: true
+        yaw:
           Value: true
       Marker Alpha: 1
       Marker Scale: 1
@@ -73,18 +103,50 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        camera_optical_frame:
-          armor0:
-            {}
-          armor1:
-            {}
+        odom:
+          base_link:
+            base_yaw:
+              trigger:
+                {}
+              yaw:
+                base_pitch:
+                  pitch:
+                    camera2_optical_frame:
+                      {}
+                    camera_link:
+                      {}
+                    camera_optical_frame:
+                      armor0:
+                        {}
+                    gimbal_imu:
+                      {}
+                    left_friction_wheel:
+                      {}
+                    right_friction_wheel:
+                      {}
+            left_back_wheel:
+              {}
+            left_front_wheel:
+              {}
+            right_back_wheel:
+              {}
+            right_front_wheel:
+              {}
       Update Interval: 0
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /ft/debug/marker
+      Name: MarkerArray
+      Namespaces:
+        {}
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: camera_optical_frame
+    Fixed Frame: odom
     Frame Rate: 30
   Name: root
   Tools:
@@ -108,7 +170,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 8.425289154052734
+      Distance: 11.83692455291748
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -124,9 +186,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5503978729248047
+      Pitch: 0.2697972357273102
       Target Frame: <Fixed Frame>
-      Yaw: 0.7372217774391174
+      Yaw: 0.4572219252586365
     Saved: ~
 Window Geometry:
   Displays:

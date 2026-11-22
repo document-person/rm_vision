@@ -61,6 +61,9 @@
   <depend>tf2_ros</depend>
   <depend>tf2_geometry_msgs</depend>
   <depend>dynamic_reconfigure</depend>
+  <depend>visualization_msgs</depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
   
   <!-- The export tag contains other, unspecified, tags -->
   <export>

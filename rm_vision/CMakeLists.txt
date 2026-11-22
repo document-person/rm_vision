@@ -20,6 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_geometry_msgs
   geometry_msgs
   dynamic_reconfigure
+  message_generation
+  visualization_msgs
 )
 find_package(OpenCV REQUIRED)
 
@@ -57,11 +59,11 @@ find_package(OpenCV REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-#  add_message_files(
-#    FILES
-#    Detection.msg
-#    DetectionFrame.msg
-#  )
+ add_message_files(
+   FILES
+   Track.msg
+   TrackArray.msg
+ )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -78,11 +80,11 @@ find_package(OpenCV REQUIRED)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-#   geometry_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -116,7 +118,8 @@ generate_dynamic_reconfigure_options(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES rm_vision
-  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs std_msgs dynamic_reconfigure ft_detection
+  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs
+                 std_msgs dynamic_reconfigure ft_detection message_runtime
 #  DEPENDS system_lib
   DEPENDS OpenCV
 )
@@ -150,6 +153,9 @@ include_directories(
   src/image_sub.cpp
   src/armor_detectors.cpp
   src/armor_solver.cpp)
+  add_executable(tracker_node
+   src/tracker.cpp
+   src/tracker_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -161,7 +167,7 @@ include_directories(
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(image_sub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
+add_dependencies(tracker_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
@@ -169,7 +175,9 @@ add_dependencies(image_sub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED
  target_link_libraries(image_sub
    ${catkin_LIBRARIES} ${OpenCV_LIBS}
  )
-
+ target_link_libraries(tracker_node
+   ${catkin_LIBRARIES} ${OpenCV_LIBS}
+ )
 #############
 ## Install ##
 #############
