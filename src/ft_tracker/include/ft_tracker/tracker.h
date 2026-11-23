@@ -1,12 +1,12 @@
-#ifndef RM_VISION_TRACKER_H
-#define RM_VISION_TRACKER_H
+#ifndef FT_TRACKER_TRACKER_H
+#define FT_TRACKER_TRACKER_H
 
 #include <vector>
 #include <opencv2/core.hpp>
 #include <cstdint>
 #include <opencv2/video/tracking.hpp>
 
-namespace rm_vision{
+namespace ft_tracker{
 
 //存单帧观测数据
 struct Measurement

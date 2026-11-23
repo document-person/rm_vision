@@ -7,3 +7,6 @@ install/
 .vscode/
 *.gv
 *.pdf
+.catkin_workspace
+compile_commands.json
+src/CMakeLists.txt

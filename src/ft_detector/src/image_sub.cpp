@@ -7,22 +7,22 @@
 #include <algorithm>
 #include <cmath>
 
-#include "rm_vision/armor_detector.h"
-#include "rm_vision/armor_solver.h"
+#include "ft_detector/armor_detector.h"
+#include "ft_detector/armor_solver.h"
 #include <ft_detection/DetectionFrame.h>
-#include <rm_vision/ArmorParamsConfig.h>
+#include <ft_detector/ArmorParamsConfig.h>
 #include <dynamic_reconfigure/server.h>
 
-#include <rm_vision/TrackArray.h>//s
+#include <ft_tracker/TrackArray.h>//s
 
-rm_vision::TrackArray::ConstPtr latest_tracks;//s
+ft_tracker::TrackArray::ConstPtr latest_tracks;//s
 
 //发布解码后的图像
 ros::Publisher debug_image_pub;
 //创建检测消息发布
 ros::Publisher detection_pub;
 //定义一个全局变量，保存当前的参数状态
-rm_vision::ArmorParamsConfig current_params;
+ft_detector::ArmorParamsConfig current_params;
 //调用寻找装甲板这个类
 ArmorDetector detector;
 //调用装甲板处理
@@ -40,13 +40,13 @@ cv::Mat last_dist_D;//畸变系数
 int last_image_width = 0;
 int last_image_height = 0;
 
-void trackCallback(const rm_vision::TrackArray::ConstPtr& msg) {
+void trackCallback(const ft_tracker::TrackArray::ConstPtr& msg) {
     latest_tracks = msg; // 每次收到最新数据就覆盖
 }
 
 void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& msg);
 void imageCallback(const sensor_msgs::ImageConstPtr& msg);
-void reconfigCallback(rm_vision::ArmorParamsConfig &config,uint32_t level);
+void reconfigCallback(ft_detector::ArmorParamsConfig &config,uint32_t level);
 
 int main(int argc,char* argv[])
 {
@@ -101,8 +101,8 @@ int main(int argc,char* argv[])
     nh.param("memory_timeout", current_params.memory_timeout, 0.5);
     reconfigCallback(current_params, 0);
 
-    dynamic_reconfigure::Server<rm_vision::ArmorParamsConfig> server;
-    dynamic_reconfigure::Server<rm_vision::ArmorParamsConfig>::CallbackType f;
+    dynamic_reconfigure::Server<ft_detector::ArmorParamsConfig> server;
+    dynamic_reconfigure::Server<ft_detector::ArmorParamsConfig>::CallbackType f;
     f = boost::bind(&reconfigCallback, _1, _2);
     server.setCallback(f);
     //强制用 YAML 的值覆盖掉 CFG 的默认值
@@ -309,7 +309,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
     detection_pub.publish(frame_msg);
 }
 
-void reconfigCallback(rm_vision::ArmorParamsConfig &config,uint32_t level)
+void reconfigCallback(ft_detector::ArmorParamsConfig &config,uint32_t level)
 {
     current_params = config;
     //更新 armor_detection 参数

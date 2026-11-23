@@ -1,5 +1,5 @@
-#ifndef ARMOR_SOLVER_H
-#define ARMOR_SOLVER_H
+#ifndef FT_DETECTOR_ARMOR_SOLVER_H
+#define FT_DETECTOR_ARMOR_SOLVER_H
 
 #include <opencv2/opencv.hpp>
 #include <string>
@@ -12,7 +12,7 @@
 #include <geometry_msgs/TwistStamped.h>
 #include <tf2_ros/transform_broadcaster.h>
 
-#include "rm_vision/armor_detector.h"
+#include "ft_detector/armor_detector.h"
 
 class ArmorSolver
 {

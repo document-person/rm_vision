@@ -1,5 +1,5 @@
-#ifndef ARMOR_DETECTOR_H
-#define ARMOR_DETECTOR_H
+#ifndef FT_DETECTOR_ARMOR_DETECTOR_H
+#define FT_DETECTOR_ARMOR_DETECTOR_H
 
 #include <opencv2/opencv.hpp>
 #include <vector>

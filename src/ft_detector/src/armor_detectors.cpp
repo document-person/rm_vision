@@ -1,4 +1,4 @@
-#include "rm_vision/armor_detector.h"
+#include "ft_detector/armor_detector.h"
 #include <algorithm>
 #include <cmath>
 #include <ros/ros.h>

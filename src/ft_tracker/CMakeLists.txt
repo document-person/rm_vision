@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(rm_vision)
+project(ft_tracker)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -8,19 +8,13 @@ project(rm_vision)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  cv_bridge
+  dynamic_reconfigure
   ft_detection
-  image_transport
+  geometry_msgs
+  message_generation
   roscpp
   rospy
-  sensor_msgs
   std_msgs
-  tf2
-  tf2_ros
-  tf2_geometry_msgs
-  geometry_msgs
-  dynamic_reconfigure
-  message_generation
   visualization_msgs
 )
 find_package(OpenCV REQUIRED)
@@ -59,11 +53,11 @@ find_package(OpenCV REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
- add_message_files(
-   FILES
-   Track.msg
-   TrackArray.msg
- )
+add_message_files(
+  FILES
+  Track.msg
+  TrackArray.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -82,8 +76,8 @@ find_package(OpenCV REQUIRED)
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
-  std_msgs
   geometry_msgs
+  std_msgs
 )
 
 ################################################
@@ -101,9 +95,12 @@ generate_messages(
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
+# generate_dynamic_reconfigure_options(
+#   cfg/DynReconf1.cfg
+#   cfg/DynReconf2.cfg
+# )
 generate_dynamic_reconfigure_options(
   cfg/ArmorParams.cfg
-  # cfg/DynReconf2.cfg
 )
 
 ###################################
@@ -116,13 +113,19 @@ generate_dynamic_reconfigure_options(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES rm_vision
-  CATKIN_DEPENDS cv_bridge image_transport roscpp rospy sensor_msgs
-                 std_msgs dynamic_reconfigure ft_detection message_runtime
-#  DEPENDS system_lib
+  INCLUDE_DIRS include
+  CATKIN_DEPENDS
+    dynamic_reconfigure
+    ft_detection
+    geometry_msgs
+    message_runtime
+    roscpp
+    rospy
+    std_msgs
+    visualization_msgs
   DEPENDS OpenCV
 )
+
 
 ###########
 ## Build ##
@@ -133,11 +136,12 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/rm_vision.cpp
+#   src/${PROJECT_NAME}/ft_tracker.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -148,14 +152,11 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/rm_vision_node.cpp)
- add_executable(image_sub
-  src/image_sub.cpp
-  src/armor_detectors.cpp
-  src/armor_solver.cpp)
-  add_executable(tracker_node
-   src/tracker.cpp
-   src/tracker_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/ft_tracker_node.cpp)
+add_executable(tracker_node
+  src/tracker.cpp
+  src/tracker_node.cpp
+)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -166,18 +167,14 @@ include_directories(
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-add_dependencies(image_sub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(tracker_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
- target_link_libraries(image_sub
-   ${catkin_LIBRARIES} ${OpenCV_LIBS}
- )
- target_link_libraries(tracker_node
-   ${catkin_LIBRARIES} ${OpenCV_LIBS}
- )
+target_link_libraries(tracker_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
+
 #############
 ## Install ##
 #############
@@ -205,6 +202,9 @@ add_dependencies(tracker_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPOR
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 # )
+install(TARGETS tracker_node
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark cpp header files for installation
 # install(DIRECTORY include/${PROJECT_NAME}/
@@ -212,6 +212,9 @@ add_dependencies(tracker_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPOR
 #   FILES_MATCHING PATTERN "*.h"
 #   PATTERN ".svn" EXCLUDE
 # )
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES
@@ -225,7 +228,7 @@ add_dependencies(tracker_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPOR
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_rm_vision.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_ft_tracker.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

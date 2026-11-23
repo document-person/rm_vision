@@ -1,10 +1,10 @@
-#include "rm_vision/tracker.h"
+#include "ft_tracker/tracker.h"
 
 #include <algorithm>
 #include <cmath>
 #include <vector>
 
-namespace rm_vision{
+namespace ft_tracker{
 
 void Tracker::reset()
 {

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>rm_vision</name>
+  <name>ft_detector</name>
   <version>0.0.0</version>
-  <description>The rm_vision package</description>
+  <description>The ft_detector package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/rm_vision</url> -->
+  <!-- <url type="website">http://wiki.ros.org/ft_detector</url> -->
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
@@ -49,22 +49,21 @@
   <!-- Use doc_depend for packages you need only for building documentation: -->
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>cv_bridge</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>ft_detection</depend>
+  <depend>ft_tracker</depend>
+  <depend>geometry_msgs</depend>
+  <depend>image_transport</depend>
   <depend>roscpp</depend>
   <depend>rospy</depend>
-  <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>ft_detection</depend>
-  <depend>cv_bridge</depend>
-  <depend>image_transport</depend>
+  <depend>std_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
-  <depend>tf2_geometry_msgs</depend>
-  <depend>dynamic_reconfigure</depend>
-  <depend>visualization_msgs</depend>
-  <build_depend>message_generation</build_depend>
-  <exec_depend>message_runtime</exec_depend>
-  
+
+
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- Other tools can request additional information be placed here -->

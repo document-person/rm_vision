@@ -1,11 +1,11 @@
 #include <ros/ros.h>
 #include <ft_detection/DetectionFrame.h>
-#include <rm_vision/TrackArray.h>
+#include <ft_tracker/TrackArray.h>
 #include <opencv2/core.hpp>
-#include <rm_vision/tracker.h>
+#include <ft_tracker/tracker.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <rm_vision/ArmorParamsConfig.h>
+#include <ft_tracker/ArmorParamsConfig.h>
 #include <dynamic_reconfigure/server.h>
 #include <boost/bind.hpp>
 
@@ -14,11 +14,11 @@
 #include <string>
 
 ros::Publisher track_pub;
-rm_vision::Tracker tracker;
-rm_vision::Tracker::Params params;
+ft_tracker::Tracker tracker;
+ft_tracker::Tracker::Params params;
 ros::Publisher marker_pub;
 std::string g_tf_frame = "camera_optical_frame";//统一输出坐标系
-rm_vision::ArmorParamsConfig current_params;
+ft_tracker::ArmorParamsConfig current_params;
 double g_reacq_time = 1.5;//断档后最多外推几秒
 double g_reacq_dist = 0.8;//允许接回的最大距离偏差
 double g_id_memory  = 4.0;//断档后还能保留 id 的最长时间
@@ -34,7 +34,7 @@ static bool plausiblePos(const double p[3])
 }
 
 void trackCallback(const ft_detection::DetectionFrame::ConstPtr& msg);
-void reconfigCallback(rm_vision::ArmorParamsConfig &config, uint32_t level);
+void reconfigCallback(ft_tracker::ArmorParamsConfig &config, uint32_t level);
 
 int main(int argc, char *argv[])
 {
@@ -58,8 +58,8 @@ int main(int argc, char *argv[])
     nh.param<std::string>("tf_parent_frame", g_tf_frame, std::string("camera_optical_frame"));
 
     reconfigCallback(current_params, 0);
-    dynamic_reconfigure::Server<rm_vision::ArmorParamsConfig> server;
-    dynamic_reconfigure::Server<rm_vision::ArmorParamsConfig>::CallbackType f;
+    dynamic_reconfigure::Server<ft_tracker::ArmorParamsConfig> server;
+    dynamic_reconfigure::Server<ft_tracker::ArmorParamsConfig>::CallbackType f;
     f = boost::bind(&reconfigCallback, _1, _2);
     server.setCallback(f);
     server.updateConfig(current_params);//用YAML覆盖CFG默认值
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     nh.param("queue_size", queue_size, 10);
 
     ros::Subscriber sub = nh.subscribe(detection_topic,queue_size,trackCallback);
-    track_pub = nh.advertise<rm_vision::TrackArray> ("/ft/track",10);
+    track_pub = nh.advertise<ft_tracker::TrackArray> ("/ft/track",10);
     marker_pub = nh.advertise<visualization_msgs::MarkerArray>("/ft/debug/marker",10);
 
     ros::spin();
@@ -88,10 +88,10 @@ void trackCallback(const ft_detection::DetectionFrame::ConstPtr& msg)
     }
     last_stamp = stamp;
     //消息变成观测数据
-    std::vector<rm_vision::Measurement> meas;
+    std::vector<ft_tracker::Measurement> meas;
     meas.reserve(msg->detections.size());
     for(const auto& d : msg->detections){
-        rm_vision::Measurement m;
+        ft_tracker::Measurement m;
         float cx = 0.f, cy = 0.f;
         for(int i = 0;i < 4;i++){
             cx += d.corners[i].x;
@@ -119,7 +119,7 @@ void trackCallback(const ft_detection::DetectionFrame::ConstPtr& msg)
     }
 
     //更新
-    const std::vector<rm_vision::TrackState> tracks = tracker.update(meas,stamp);
+    const std::vector<ft_tracker::TrackState> tracks = tracker.update(meas,stamp);
 
     //目标层 id 管理，用于重连
     static int locked_track = -1;//当前锁定的内部 track id
@@ -136,7 +136,7 @@ void trackCallback(const ft_detection::DetectionFrame::ConstPtr& msg)
         ROS_WARN("tracker: time reset, target layer cleared");
     }
 
-    const rm_vision::TrackState* locked = nullptr;
+    const ft_tracker::TrackState* locked = nullptr;
     for(const auto& t : tracks){
         if(static_cast<int>(t.id) == locked_track){
             locked = &t;
@@ -158,7 +158,7 @@ void trackCallback(const ft_detection::DetectionFrame::ConstPtr& msg)
         const double v = std::sqrt(tgt_vel[0]*tgt_vel[0] + tgt_vel[1]*tgt_vel[1] + tgt_vel[2]*tgt_vel[2]);
         //允许的偏差封顶4m
         const double gate = std::min(g_reacq_dist + 0.5 * v * age, 4.0);
-        const rm_vision::TrackState* cand = nullptr;
+        const ft_tracker::TrackState* cand = nullptr;
         double best = 1e9;
         for(const auto& t : tracks){
             if(!t.confirmed) continue;
@@ -218,12 +218,12 @@ void trackCallback(const ft_detection::DetectionFrame::ConstPtr& msg)
     }
 
     //打包要发送的信息
-    rm_vision::TrackArray out;
+    ft_tracker::TrackArray out;
     out.header = msg->header;
     out.header.frame_id = g_tf_frame;// [改] 时间戳沿用图像，坐标系强制成可信的那一帧
     if(locked){//正常跟踪
         const auto& t = *locked;
-        rm_vision::Track tr;
+        ft_tracker::Track tr;
         tr.id = static_cast<uint32_t>(tgt_id >= 0 ? tgt_id : static_cast<int>(t.id));
         tr.lost_time = static_cast<float>(t.lost_time);
         tr.tracking = t.tracking;
@@ -243,7 +243,7 @@ void trackCallback(const ft_detection::DetectionFrame::ConstPtr& msg)
         tr.position_predict.z = t.predict_pos[2];
         out.tracks.push_back(tr);
     }else if(tgt_alive){//目标存活但轨迹丢失，保留外推位置和角度
-        rm_vision::Track tr;
+        ft_tracker::Track tr;
         tr.id = static_cast<uint32_t>(tgt_id >= 0 ? tgt_id : 0);
         tr.lost_time = static_cast<float>(stamp - tgt_seen);
         tr.tracking = false;
@@ -375,7 +375,7 @@ void trackCallback(const ft_detection::DetectionFrame::ConstPtr& msg)
     //                   id_str.c_str());
 }
 
-void reconfigCallback(rm_vision::ArmorParamsConfig &config, uint32_t level)
+void reconfigCallback(ft_tracker::ArmorParamsConfig &config, uint32_t level)
 {
     current_params = config;
 

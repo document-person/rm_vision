@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2/LinearMath/Quaternion.h>
-#include "rm_vision/armor_solver.h"
+#include "ft_detector/armor_solver.h"
 
 ArmorSolver::ArmorSolver(){}
 //提取相机的参数
