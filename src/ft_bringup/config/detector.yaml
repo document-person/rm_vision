@@ -1,8 +1,7 @@
 #话题
 image_topic: "/hk_camera/image_raw"
 camera_info_topic: "/hk_camera/camera_info"
-tf_parent_frame: "camera_optical_frame"
-queue_size: 5
+image_queue_size: 1
 
 #颜色阈值(HSV)
 red_h_min1: 0
@@ -24,17 +23,17 @@ max_bar_angle: 45.0
 min_fill_ratio: 0.5
 
 #配对装甲板
-  #装甲板参数
+#装甲板参数
 small_half_w: 0.0675
 big_half_w: 0.1175
 bar_half_len: 0.0275
   
-  #配对条件
+#配对条件
 max_y_diff: 0.25
 max_angle_diff: 10.0
 max_bar_length_diff: 0.30 #灯条长度一致性
 max_bar_width_diff: 0.40 #灯条宽度一致性
-min_v_control: 0.935 #设置最底亮度，排除反光干扰
+min_v_control: 0.94 #设置最底亮度，排除反光干扰
 max_x_dist_ratio: 6.0
 min_x_dist_ratio: 1.0
 bar_size_ratio: 3.2
@@ -44,21 +43,16 @@ max_reproj_error: 3.0
 force_vertical_plate: true
 memory_timeout: 0.5
 
-#跟踪预留
-track_gate_chi2: 11.34 #关联门限
-track_confirm_hits: 2
-track_lost_time: 0.5
-track_max_tracks: 8
-
-#卡尔曼滤波
-track_R_xy: 0.0001 #xy不会出错
-track_R_z: 0.02
-track_acc_var: 6.0 #3*3
-track_vel_var_max: 0.50
-track_v_max: 5.0
-track_a_max: 10.0 #单帧速度变化上限
-track_dv_step: 0.5 #单帧速度修正上限
-track_reacq_time: 1.5 #目标层 ID：断档容忍时间
-track_reacq_dist: 0.8 #目标层 ID：跳变容忍距离
-track_id_memory: 4.0 #断档后保留 id 的时长
-T: 0.1 #预测位置飞行时间
+#神经网络识别
+nn_model_path: "package://ft_detector/model/armor.onnx"
+nn_input_width: 640
+nn_input_height: 480
+nn_pad_value: 124
+nn_color_thresh: 0.50
+nn_number_thresh: 0.50
+nn_nms_iou: 0.50
+nn_max_detections: 8
+nn_large_by_number: [0, 0, 0, 0, 0, 0, 1, 1, 1]
+nn_intra_threads: 2
+nn_verbose_output: true
+nn_debug_every_n: 30

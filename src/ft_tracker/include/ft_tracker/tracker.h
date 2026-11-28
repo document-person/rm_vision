@@ -43,8 +43,8 @@ class Tracker
 public:
     struct Params
     {
+        //以下各项都有对应的 ROS/dynamic_reconfigure 参数（见 ft_tracker/cfg/ArmorParams.cfg）
         double gate = 11.34;//用马氏距离后，z 噪声大时 z 方向的门限会自动放宽，x/y 会自动收紧
-        double gate_sigma_m = 0.05;//关联门限实际下限
         int confirm_hits = 2;// 连续命中几帧才对外发布，压掉单帧虚检
         double lost_time = 0.5;//多久没观测就删轨迹
         int max_tracks = 8;//轨迹数上限
@@ -53,15 +53,14 @@ public:
         double R_z = 0.02;//Z 测量方差
         double acc_var = 6.0;//加速度方差
         double vel_var_max = 0.5;//速度方差上限
-        double v_max = 8.0;//限速
-        double v0_var = 1.0;//新轨迹的速度方差初值
+        double v_max = 5.0;//限速（与 cfg 默认值保持一致）
         double a_max = 10.0;//单帧最大加速度
         double dv_step = 0.5;//单帧速度修正的硬上限
-        double T = 0.1;
+        double T = 0.1;//预测提前量
 
-        double g_reacq_time = 1.5;//目标层 ID：允许断档的最长时间
-        double g_reacq_dist = 0.8;//目标层 ID：允许跳变的最大距离
-        double g_id_memory  = 4.0;//断档后还能保留 id 的最长时间，比输出保持更长
+        //下面两项目前没有 ROS 参数（固定值）。要在线调就在 cfg 里加同名项并在 tracker_node 里读取。
+        double gate_sigma_m = 0.05;//关联门限的实际下限（对 S 做正则化）
+        double v0_var = 1.0;//新轨迹的速度方差初值
     };
     
     void setParams(const Params& p){params_ = p;}

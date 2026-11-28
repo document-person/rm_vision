@@ -22,7 +22,19 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
 )
 find_package(OpenCV REQUIRED)
-
+# ---- ONNX Runtime ----
+set(ORT_ROOT "/root/catkin_ws/third_party/ort" CACHE PATH "onnxruntime root")
+if(EXISTS "${ORT_ROOT}/include/onnxruntime_cxx_api.h")
+  message(STATUS "ONNX Runtime: ${ORT_ROOT}")
+  add_definitions(-DFT_USE_ONNXRUNTIME)
+  include_directories(${ORT_ROOT}/include)
+  set(ORT_LIB ${ORT_ROOT}/lib/libonnxruntime.so)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-rpath,${ORT_ROOT}/lib")
+  add_compile_options(-std=c++17)
+else()
+  message(WARNING "ONNX Runtime 未找到: ${ORT_ROOT}")
+  set(ORT_LIB "")
+endif()
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -155,12 +167,19 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/ft_detector_node.cpp)
 add_executable(image_sub
-  src/image_sub.cpp
-  src/armor_detectors.cpp
-  src/armor_solver.cpp
+   src/image_sub.cpp
+   src/armor_detectors.cpp
+   src/armor_solver.cpp
+   src/armor_detector_nn.cpp
+   src/onnx_engine.cpp
+)
+add_executable(nn_sample_test
+   src/nn_sample_test.cpp
+   src/armor_detector_nn.cpp
+   src/onnx_engine.cpp
 )
 add_dependencies(image_sub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
+add_dependencies(nn_sample_test ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -175,7 +194,8 @@ add_dependencies(image_sub ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
-target_link_libraries(image_sub ${catkin_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(image_sub ${catkin_LIBRARIES} ${OpenCV_LIBS} ${ORT_LIB})
+target_link_libraries(nn_sample_test ${catkin_LIBRARIES} ${OpenCV_LIBS} ${ORT_LIB})
 
 #############
 ## Install ##
@@ -204,7 +224,7 @@ target_link_libraries(image_sub ${catkin_LIBRARIES} ${OpenCV_LIBS})
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
 # )
-install(TARGETS image_sub
+install(TARGETS image_sub nn_sample_test
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

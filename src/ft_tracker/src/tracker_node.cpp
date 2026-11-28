@@ -19,7 +19,6 @@ ft_tracker::Tracker::Params params;
 ros::Publisher marker_pub;
 std::string g_tf_frame = "camera_optical_frame";//统一输出坐标系
 ft_tracker::ArmorParamsConfig current_params;
-double g_reacq_time = 1.5;//断档后最多外推几秒
 double g_reacq_dist = 0.8;//允许接回的最大距离偏差
 double g_id_memory  = 4.0;//断档后还能保留 id 的最长时间
 
@@ -52,7 +51,6 @@ int main(int argc, char *argv[])
     nh.param("track_v_max", current_params.track_v_max, 5.0);
     nh.param("track_a_max", current_params.track_a_max, 10.0);
     nh.param("T", current_params.T, 0.1);
-    nh.param("track_reacq_time", current_params.track_reacq_time, 1.0);
     nh.param("track_reacq_dist", current_params.track_reacq_dist, 0.8);
     nh.param("track_id_memory", current_params.track_id_memory, 4.0);
     nh.param<std::string>("tf_parent_frame", g_tf_frame, std::string("camera_optical_frame"));
@@ -67,7 +65,7 @@ int main(int argc, char *argv[])
     std::string detection_topic;
     nh.param<std::string> ("detection_topic", detection_topic, "/ft/detection");
     int queue_size = 10;
-    nh.param("queue_size", queue_size, 10);
+    nh.param("detection_queue_size", queue_size, 10);
 
     ros::Subscriber sub = nh.subscribe(detection_topic,queue_size,trackCallback);
     track_pub = nh.advertise<ft_tracker::TrackArray> ("/ft/track",10);
@@ -390,8 +388,6 @@ void reconfigCallback(ft_tracker::ArmorParamsConfig &config, uint32_t level)
     params.v_max        = config.track_v_max;
     params.a_max        = config.track_a_max;
     params.dv_step      = config.track_dv_step;
-    g_reacq_time        = config.track_reacq_time;
-    g_reacq_dist        = config.track_reacq_dist;
     g_id_memory         = config.track_id_memory;
     params.T            = config.T;
     tracker.setParams(params);

@@ -9,4 +9,7 @@ install/
 *.pdf
 .catkin_workspace
 compile_commands.json
-src/CMakeLists.txt
+src/CMakeLists.txtthird_party/
+third_party/
+*.onnx
+*.bak

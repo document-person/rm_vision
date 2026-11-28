@@ -5,6 +5,13 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include "ft_detector/armor_solver.h"
 
+namespace {
+// 解算器内部判据（有意不做成在线参数，改这里需要重新编译）
+constexpr double kMinDepthM           = 0.1;  // 解的有效深度下限（米）
+constexpr double kSecondSolutionRatio = 1.5;  // 次优/最优误差比低于此值时，用上一帧法向裁决镜像解
+constexpr double kMinBarHeightPx      = 1.0;  // 灯条像素高度下限，太小则"用高度定 z"不可靠
+}
+
 ArmorSolver::ArmorSolver(){}
 //提取相机的参数
 void ArmorSolver::setCameraInfo(const cv::Mat& K,const cv::Mat& D,
@@ -97,7 +104,7 @@ bool ArmorSolver::solve(const Armor& armor,const cv::Size& image_size,Pose& out)
     };
     std::vector<Cand> cands;
     for(int k = 0;k < n;++k){
-        if(tvecs[k][2] < 0.1) continue;
+        if(tvecs[k][2] < kMinDepthM) continue;
         cv::Mat R;
         cv::Rodrigues(rvecs[k],R);
         const cv::Vec3d nz(R.at<double>(0,2),R.at<double>(1,2),R.at<double>(2,2));
@@ -125,7 +132,7 @@ bool ArmorSolver::solve(const Armor& armor,const cv::Size& image_size,Pose& out)
     int pick = 0;
     if(cands.size() >= 2 && has_last_){
         const double r = cands[1].err / std::max(cands[0].err ,1e-6);//防止分母是0
-        if(r < 1.5 && cands[0].nz.dot(last_nz_) < cands[1].nz.dot(last_nz_)){
+        if(r < kSecondSolutionRatio && cands[0].nz.dot(last_nz_) < cands[1].nz.dot(last_nz_)){
             pick = 1;// 选和上一帧朝向更一致的那个
         }
     }
@@ -148,7 +155,7 @@ bool ArmorSolver::solve(const Armor& armor,const cv::Size& image_size,Pose& out)
     // 打开这个开关 = 用物理先验把俯仰/横滚按死，只保留偏航，再用"高度定 z、板心定 x,y"重算平移
     if(params_.force_vertical_plate){
         const double h_px_v = cv::norm(armor.corners[3] - armor.corners[0]);
-        if(h_px_v > 1.0){//取值1.0,防止因为数据太小而不可靠
+        if(h_px_v > kMinBarHeightPx){
             const double yaw_v = std::atan2(out.R(0,2), out.R(2,2));  //只取偏航角
             const double cv_ = std::cos(yaw_v), sv_ = std::sin(yaw_v);
             out.R = cv::Matx33d( cv_, 0.0, sv_,
@@ -259,8 +266,10 @@ void ArmorSolver::broadcastTF(const Pose& pose,const std_msgs::Header& header,
     // 父坐标系优先用参数指定的；没指定才退回图像自带的 frame_id
     std_msgs::Header tf_header = header;
     if(!tf_parent_.empty()) tf_header.frame_id = tf_parent_;
-    if(header.frame_id.empty()){
-        ROS_WARN_THROTTLE(2.0,"TF:image header.frame_id is empty,check the camera driver");
+    // 这里要判断"最终真正要用的"父坐标系，而不是原始 header.frame_id：
+    // 否则相机驱动不发 frame_id 时，即使参数里指定了 tf_parent_frame 也会被误判为空
+    if(tf_header.frame_id.empty()){
+        ROS_WARN_THROTTLE(2.0,"TF: parent frame is empty, check tf_parent_frame param / camera driver");
         return;
     }
     if(!tf_broadcaster_){//懒加载：如果广播器没创建，创建一个

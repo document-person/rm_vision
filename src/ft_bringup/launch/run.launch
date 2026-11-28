@@ -2,14 +2,24 @@
     <!--开启模拟时间-->
     <param name="/use_sim_time" value="true" />
 
-    <rosparam file="$(find ft_bringup)/config/params.yaml" command="load" ns="image_sub" />
-    <rosparam file="$(find ft_bringup)/config/params.yaml" command="load" ns="tracker_node" />
+    <!--roslaunch ft_bringup run.launch detector_mode:=nn使用模型-->
+    <arg name="detector_mode" default="traditional" />
+    <arg name="compare_mode" default="" />
+    <arg name="tf_parent_frame" default="camera_optical_frame" />
 
-    <node name="image_sub" pkg="ft_detector" type="image_sub" output="screen" />
-    <node name="tracker_node" pkg="ft_tracker" type="tracker_node" output="screen" />
+    <node name="image_sub" pkg="ft_detector" type="image_sub" output="screen">
+        <rosparam file="$(find ft_bringup)/config/detector.yaml" command="load" />
+        <param name="detector_mode" value="$(arg detector_mode)" />
+        <param name="compare_mode" value="$(arg compare_mode)" />
+        <param name="tf_parent_frame" value="$(arg tf_parent_frame)" />
+    </node>
+
+    <node name="tracker_node" pkg="ft_tracker" type="tracker_node" output="screen">
+        <rosparam file="$(find ft_bringup)/config/tracker.yaml" command="load" />
+        <param name="tf_parent_frame" value="$(arg tf_parent_frame)" />
+    </node>
 
     <!--一键启动 RViz 并加载配置-->
     <node pkg="rviz" type="rviz" name="rviz"
           args="-d $(find ft_bringup)/rviz/armor_config.rviz" />
-
 </launch>

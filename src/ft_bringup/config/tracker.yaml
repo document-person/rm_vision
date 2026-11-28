@@ -1,0 +1,21 @@
+#检测结果订阅
+detection_topic: "/ft/detection"
+detection_queue_size: 10
+
+#跟踪预留
+track_gate_chi2: 11.34 #关联门限
+track_confirm_hits: 2
+track_lost_time: 0.5
+track_max_tracks: 8
+
+#卡尔曼滤波
+track_R_xy: 0.0001 #xy不会出错
+track_R_z: 0.02
+track_acc_var: 6.0 #3*3
+track_vel_var_max: 0.50
+track_v_max: 5.0
+track_a_max: 10.0 #单帧速度变化上限
+track_dv_step: 0.5 #单帧速度修正上限
+track_reacq_dist: 0.8 #目标层 ID：跳变容忍距离
+track_id_memory: 4.0 #断档后保留 id 的时长
+T: 0.1 #预测位置飞行时间

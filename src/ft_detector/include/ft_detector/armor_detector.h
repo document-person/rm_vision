@@ -21,6 +21,8 @@ struct Armor
     std::string type;//大还是小
     std::string color;//红还是蓝
     std::vector<cv::Point2f> corners;// 四角点 (左上、右上、右下、左下) 供 PnP 使用
+    float confidence = 1.0f;// 传统检测固定 1.0；NN 填颜色分数，直接进 /ft/detection
+    int number = -1;// 装甲板编号；-1 = 未知（传统检测没有编号）
 };
 
 class ArmorDetector{
